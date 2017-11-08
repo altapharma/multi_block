@@ -46,11 +46,11 @@ static u_int32_t print_pkt (struct nfq_data *tb, list* lptr)
     ph = nfq_get_msg_packet_hdr(tb);
     if (ph) {
         id = ntohl(ph->packet_id);
-        printf("hw_protocol=0x%04x hook=%u id=%u \n", ntohs(ph->hw_protocol), ph->hook, id);
+        //printf("hw_protocol=0x%04x hook=%u id=%u \n", ntohs(ph->hw_protocol), ph->hook, id);
     }
 
     hwph = nfq_get_packet_hw(tb);
-    if (hwph) {
+    /*if (hwph) {
         int i, hlen = ntohs(hwph->hw_addrlen);
 
         printf("hw_src_addr=");
@@ -58,30 +58,21 @@ static u_int32_t print_pkt (struct nfq_data *tb, list* lptr)
             printf("%02x:", hwph->hw_addr[i]);
         printf("%02x ", hwph->hw_addr[hlen-1]);
         printf("\n");
-    }
-/*
-    mark = nfq_get_nfmark(tb);
-    if (mark)
-        printf("mark=%u ", mark);
+    }*/
 
+    mark = nfq_get_nfmark(tb);
+    
     ifi = nfq_get_indev(tb);
-    if (ifi)
-        printf("indev=%u ", ifi);
 
     ifi = nfq_get_outdev(tb);
-    if (ifi)
-        printf("outdev=%u ", ifi);
+
     ifi = nfq_get_physindev(tb);
-    if (ifi)
-        printf("physindev=%u ", ifi);
 
     ifi = nfq_get_physoutdev(tb);
-    if (ifi)
-        printf("physoutdev=%u ", ifi);
- */       
+    
     ret = nfq_get_payload(tb, &data);
     if (ret > 0){
-        printf("payload_len=%d \n", ret);
+        //printf("payload_len=%d \n", ret);
 	    //printf("Dump of Packet\n");
         //dump(data, ret);
         struct sniff_ip* net_ip;
@@ -90,17 +81,19 @@ static u_int32_t print_pkt (struct nfq_data *tb, list* lptr)
         int size_tcp;
         net_ip = (struct sniff_ip*)(data);
         size_ip = IP_HL(net_ip)*4;
-	    printf("\n[+] ip header length : %d\n", size_ip);
+	    //printf("\n[+] ip header length : %d\n", size_ip);
         if(net_ip->ip_p == 6){
             net_tcp = (struct sniff_tcp*)(data + size_ip);
             size_tcp = TH_OFF(net_tcp)*4; //tcp header size (maximum : 60byte)
-            printf("[+] tcp header length : %d\n", size_tcp);
-            printf("test plist : %d\n",lptr->count);
-
+            //printf("[+] tcp header length : %d\n", size_tcp);
+            //printf("test plist : %d\n",lptr->count);
+            //printf("%s\n",data);
+            //dump(data, ret);
             for(int i=0;i<6;i++){
-                printf("okok : %s\n",data + size_ip + size_tcp);
+                //printf("%s\n",data + size_ip + size_tcp);
+                //printf("string : %s\n",str[i]);
                 check1 = strncmp((data + size_ip + size_tcp), str[i], strlen(str[i]));
-                printf("check ? %d\n",check1);
+                //printf("check1 : %d\n",check1);
                 if(check1 == 0){
                     printf("method : %s\n",str[i]);
                     //printf("%s\n", data + size_ip + size_tcp);
@@ -110,8 +103,12 @@ static u_int32_t print_pkt (struct nfq_data *tb, list* lptr)
                             printf("Host check\n");
                             nptr tmp = lptr->head;
                             int t=1;
+
+                            printf("\n#############\n");
+                            //printf("%s\n", data+size_ip+size_tcp+strlen(str[i])+j+strlen("Host: "));
                             while(tmp != NULL){
-                                if(!strcmp(data + size_ip + size_tcp + strlen(str[i]) + j + strlen("Host: "),tmp->url)){
+                                //printf("compare [%s]\n", tmp->url);
+                                if(!strncmp(data + size_ip + size_tcp + strlen(str[i]) + j + strlen("Host: "),tmp->url,strlen(tmp->url))){
                                     host = (char*)malloc(sizeof(tmp->url));
                                     strncpy(host,data + size_ip + size_tcp + j + strlen(str[i])+strlen("Host: "),strlen(tmp->url));
                                     printf("target url : %s \n", host);
@@ -133,7 +130,7 @@ static u_int32_t print_pkt (struct nfq_data *tb, list* lptr)
         }
     }
 
-    fputc('\n', stdout);
+    //fputc('\n', stdout);
 
     return id;
 }
@@ -143,7 +140,7 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
           struct nfq_data *nfa, void *data)
 {
     u_int32_t id = print_pkt(nfa, plist);
-    printf("entering callback\n");
+    //printf("entering callback\n");
     if(sign == 0)
         return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
     else{
@@ -174,12 +171,13 @@ int main(int argc, char **argv)
     init(plist);
     int k =1;
     FILE *fp;
-    fp = fopen("test.csv","r");     
+    fp = fopen("top-1m.csv","r");     
     while(fgets(temp,100,fp) != NULL){
         if(!strcmp(temp,"\n")) break;
         memset(temp2,0,100);
         temp3 = strstr(temp, ",") + 1;
         strncpy(temp2,temp3,strlen(temp3)-1);
+        //printf("%s\n",temp2);
         insert(plist,temp2);
     }
     fclose(fp);
@@ -223,7 +221,7 @@ int main(int argc, char **argv)
 
     for (;;) {
         if ((rv = recv(fd, buf, sizeof(buf), 0)) >= 0) {
-            printf("pkt received\n");
+            //printf("pkt received\n");
             nfq_handle_packet(h, buf, rv);
             continue;
         }
